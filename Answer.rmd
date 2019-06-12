@@ -1,0 +1,234 @@
+---
+title: "Untitled"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library("corrgram", lib.loc="~/R/win-library/3.5")
+library("Boruta", lib.loc="~/R/win-library/3.5")
+
+Data <- read_excel("D:/Data Science Project/Data Science assingnment/Data.xlsx", sheet = "delq_model")
+head(Data) # To have a snap of few observations from data
+
+
+
+
+Data = Data[-which(Data$pymt_standing == "Closed - Obligations met") , ]
+
+#Since Divorce and widower(Total 8) are very less in data and  to use it as a Binomial value we have to remove it
+
+Data = Data[-which(Data$Marital.status == "Divorcee"),]
+Data = Data[-which(Data$Marital.status == "Widower"),]
+
+Data = Data[-which(Data$Gender == 'NA'),]
+
+```
+
+
+
+
+
+#Preprocessing
+```{r cars}
+
+#Preprocessing Phase
+
+str(Data) # To know how R store each data in what way (Many variables are stored as a String form.)
+
+table(Data$Linkedin.is.Verified)  #It can be seen that lots of value is NA which is in string form
+                                  #(They might be tose people who don't have  Linkedin account).
+                                  # Replacing those value to 0(zero).
+
+Data$Linkedin.is.Verified[which(Data$Linkedin.is.Verified == 'NA')] = '0'
+
+table(Data$Facebook.is.Verified)                                            # Same is the case for facebook
+Data$Facebook.is.Verified[which(Data$Facebook.is.Verified == 'NA')] = '0'   #There are also people who are not verified there account
+                                                                            
+# Changing type of those variable who are stored in wrong data type format
+Data$Linkedin.is.Verified = as.factor(Data$Linkedin.is.Verified)
+
+Data$Facebook.is.Verified = as.factor(Data$Facebook.is.Verified)
+
+# Changing factor variables into factor numbers
+
+table(Data$Gender)
+
+Data$Gender[which(Data$Gender == "Male")] = '1'            # Male = 1
+Data$Gender[which(Data$Gender == "Female")] = '0'          #Female = 0
+
+Data$Gender = as.factor(Data$Gender)  #Converted to factor variable type
+
+
+table(Data$Education.Level)
+
+Data$Education.Level[which(Data$Education.Level == "Upto Hr Secondary")] = '1'
+Data$Education.Level[which(Data$Education.Level == "Diploma")] = '2'
+Data$Education.Level[which(Data$Education.Level == "Graduate")] = '3'
+Data$Education.Level[which(Data$Education.Level == "Professional")] = '4'
+Data$Education.Level[which(Data$Education.Level == "Post Graduate")] = '5'
+
+Data$Education.Level = as.factor(Data$Education.Level)    #Converted to factor variable type
+
+
+table(Data$EPFO.Verification.Status)    # Since all Employee Provident Fund Organization Verified are Na, we are not using it in future.
+
+table(Data$Total.years.of.experience.in.Employment.) # Ordinal Value
+
+Data$Total.years.of.experience.in.Employment. = as.factor(Data$Total.years.of.experience.in.Employment.)   #Converted to factor variable type
+
+table(Data$Bank.Transactions.Fetched) # Since all bank verification value is zero, we are not using it in future
+
+table(Data$No.of.dependents)
+
+Data$No.of.dependents[which(Data$No.of.dependents == '1 to 2')] = '1'
+Data$No.of.dependents[which(Data$No.of.dependents == '3 to 5')] = '2'
+Data$No.of.dependents[which(Data$No.of.dependents == 'More than 5')] = '3'
+
+Data$No.of.dependents = as.factor(Data$No.of.dependents)                           #Converted to factor variable type
+
+table(Data$Marital.status)
+
+Data$Marital.status[which(Data$Marital.status == "Single")] = '0'      # Zero for single
+Data$Marital.status[which(Data$Marital.status == "Married")] = '1'     #one for Married
+
+
+Data$Marital.status = as.factor(Data$Marital.status)             #Converted to factor variable type
+
+table(Data$Fee.Set)
+
+Data$Fee.Set[which(Data$Fee.Set == '1-M1')] = '1'
+Data$Fee.Set[which(Data$Fee.Set == '1-M2')] = '2'
+Data$Fee.Set[which(Data$Fee.Set == '1-M3')] = '3'
+Data$Fee.Set[which(Data$Fee.Set == '1-M4')] = '4'
+Data$Fee.Set[which(Data$Fee.Set == '1-M5')] = '5'
+Data$Fee.Set[which(Data$Fee.Set == '1-M6')] = '6'
+Data$Fee.Set[which(Data$Fee.Set == '1-M7')] = '7'
+Data$Fee.Set[which(Data$Fee.Set == '1-M8')] = '8'
+Data$Fee.Set[which(Data$Fee.Set == "Monexo Fee Set")] = '9'
+
+Data$Fee.Set = as.factor(Data$Fee.Set)
+
+table(Data$CL.Purpose..Name)
+
+Data$CL.Purpose..Name[which(Data$CL.Purpose..Name == 'Business')] = '0'
+Data$CL.Purpose..Name[which(Data$CL.Purpose..Name == "Debt Consolidation")] = '1'
+Data$CL.Purpose..Name[which(Data$CL.Purpose..Name == 'Education')] = '2'
+Data$CL.Purpose..Name[which(Data$CL.Purpose..Name == 'Holiday')] = '3'
+Data$CL.Purpose..Name[which(Data$CL.Purpose..Name == "Home renovation")] = '4'
+Data$CL.Purpose..Name[which(Data$CL.Purpose..Name == "Household General")] = '5'
+Data$CL.Purpose..Name[which(Data$CL.Purpose..Name == 'Medical')] = '6'
+Data$CL.Purpose..Name[which(Data$CL.Purpose..Name == 'Wedding')] = '7'
+
+Data$CL.Purpose..Name = as.factor(Data$CL.Purpose..Name)
+
+table(Data$Residential.status)
+
+Data$Residential.status[which(Data$Residential.status == "Company Quarters")] = '0'
+Data$Residential.status[which(Data$Residential.status == 'Hostel')] = '1'
+Data$Residential.status[which(Data$Residential.status == 'Rented')] = '2'
+Data$Residential.status[which(Data$Residential.status == "Paying Guest")] = '3'
+Data$Residential.status[which(Data$Residential.status == "Self or spouse owned")] = '4'
+Data$Residential.status[which(Data$Residential.status == "Shared Accommodation")] = '5'
+Data$Residential.status[which(Data$Residential.status == "Staying with Parents")] = '6'
+
+Data$Residential.status = as.factor(Data$Residential.status)
+
+
+
+Data$Salary.Income.current.month = as.numeric(Data$Salary.Income.current.month)
+
+
+
+
+
+
+table(Data$pymt_standing)
+
+
+
+Data$pymt_standing[which(Data$pymt_standing == "Active - Good Standing")] = '1'      # One for good standing
+
+Data$pymt_standing[which(Data$pymt_standing == "Active - Bad Standing")] = '0'       #Zero for bad standing
+
+
+Data$pymt_standing = as.factor(Data$pymt_standing)
+
+
+
+#plotting correlation
+corrgram(Data , order=TRUE, lower.panel=panel.shade,  upper.panel=panel.pie, text.panel=panel.txt,   main="Corrgram of Loan data variables")
+
+#Drawing Correlation matrix
+cor(Data[,c(10,11,12,13,32,34,35,36)])
+
+#After observing corrgram and correlation matrix I am tranforming various variable to single variable because they are correlated they make same difference in the model
+
+Data$p_unpaid_with_loan_amt = Data$Principal.Advance.Remaining / Data$Loan.Amount
+
+Data$mon_emi_with_loan_amt = Data$Payment.Amount / Data$Loan.Amount
+
+Data$Estim_Interest_with_Loan_amt = Data$Estimated.Interest / Data$Loan.Amount
+
+#Taking Linkdin and Facebook as single variable 
+Data$Social.veri = 0
+Data$Social.veri[which(Data$Linkedin.is.Verified == 1)] = 1
+Data$Social.veri[which(Data$Facebook.is.Verified == 1)] = 1
+
+
+Data$CRIF.S1.Score[which(Data$CRIF.S1.Score == 'NA')] = '0'  
+Data$CRIF.S1.Score = as.numeric(Data$CRIF.S1.Score)
+
+Data = subset(Data , select = -c(1,2,3,7,9,14,15,18,20,22,23,29,30,33) )  # Removing variable which are wasteful.
+
+Data = subset(Data , select = -c(5,6,8,12,14,21) )                         # Removing variable which are transformed
+ 
+Data = na.omit(Data)
+
+```
+
+
+
+
+
+#Feature Selection
+```{r}
+
+library("Boruta", lib.loc="~/R/win-library/3.5")
+boruta.train <- Boruta( pymt_standing~., data = Data, doTrace = 2)
+
+print(boruta.train)
+
+Data$Debt.service.ratio = as.numeric(Data$Debt.service.ratio)
+
+
+
+```
+
+
+
+#Applying Random forest
+```{r}
+
+
+Data = na.omit(Data)
+
+library("randomForest", lib.loc="~/R/win-library/3.5")
+
+train_d = Data[1:1266,]
+test_d = Data[1267:1796,]
+
+model = randomForest(formula = pymt_standing ~ CRIF.S1.Score + Interest.Paid + Term + Debt.service.ratio + Salary.Income.current.month + Interest.Rate + Total.Amount.Paid + Fee.Set + p_unpaid_with_loan_amt + mon_emi_with_loan_amt + Estim_Interest_with_Loan_amt, data = train_d )
+
+
+
+result_decis = predict( model, test_d)
+
+
+table(result_decis , test_d$pymt_standing)
+
+```
